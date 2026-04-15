@@ -196,6 +196,18 @@ class DowngramCLI:
                 
                 # ========== DESCARGA ==========
                 if current_state == 'download':
+                    # Preguntar por la carpeta de descarga antes de comenzar
+                    default_folder = str(self.downloader.downloads_folder)
+                    custom_folder = self.ui.select_download_folder(default_folder)
+                    
+                    if custom_folder:
+                        self.downloader.set_custom_download_folder(custom_folder)
+                    else:
+                        self.downloader.reset_to_default_folder()
+                    
+                    # Asegurar que la carpeta exista
+                    self.downloader.ensure_downloads_folder()
+                    
                     download_results = await self.downloader.download_media(
                         self.telegram_manager,
                         all_selected_media,

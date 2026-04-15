@@ -389,3 +389,42 @@ class UserInterface:
     def confirm_action(message: str) -> bool:
         """Solicita confirmación al usuario"""
         return Confirm.ask(f"[yellow]⚠️  {message}[/yellow]")
+    
+    @staticmethod
+    def select_download_folder(default_folder: str) -> str:
+        """
+        Permite al usuario seleccionar una carpeta de descarga personalizada.
+        Retorna la ruta de la carpeta seleccionada o None para usar la por defecto.
+        """
+        console.print(f"\n[bold]📁 Carpeta de Descarga[/bold]")
+        console.print(f"[dim]Carpeta por defecto: {default_folder}[/dim]")
+        console.print("\n[dim]Opciones:[/dim]")
+        console.print("[dim]  • Presiona Enter para usar la carpeta por defecto[/dim]")
+        console.print("[dim]  • Escribe una ruta para usar una carpeta personalizada[/dim]")
+        console.print("[dim]  • Escribe 'default' para usar la carpeta por defecto[/dim]")
+        
+        folder_input = Prompt.ask("📂 Ruta de descarga", default="")
+        
+        if not folder_input or folder_input.strip().lower() == 'default':
+            return None  # Usar carpeta por defecto
+        
+        # Limpiar la ruta
+        folder_path = folder_input.strip()
+        
+        # Expandir ~ a la carpeta home del usuario
+        if folder_path.startswith('~'):
+            folder_path = os.path.expanduser(folder_path)
+        
+        # Convertir a ruta absoluta
+        folder_path = os.path.abspath(folder_path)
+        
+        # Verificar si la ruta es válida
+        try:
+            # Crear la carpeta si no existe
+            os.makedirs(folder_path, exist_ok=True)
+            console.print(f"[green]✅ Carpeta seleccionada: {folder_path}[/green]")
+            return folder_path
+        except Exception as e:
+            console.print(f"[red]❌ Error con la ruta proporcionada: {e}[/red]")
+            console.print(f"[yellow]⚠️  Se usará la carpeta por defecto: {default_folder}[/yellow]")
+            return None

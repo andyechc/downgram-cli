@@ -16,13 +16,25 @@ class VideoDownloader:
     """Clase para manejar la descarga de videos con organización y progreso"""
     
     def __init__(self, downloads_folder: str = "downloads"):
-        self.downloads_folder = Path(downloads_folder)
+        self.base_downloads_folder = Path(downloads_folder)  # Carpeta base (downloads)
+        self.downloads_folder = self.base_downloads_folder / "Downgram"  # Carpeta por defecto
+        self.custom_folder = None  # Carpeta personalizada si se selecciona
         self.downloaded_count = 0
         self.failed_count = 0
+    
+    def set_custom_download_folder(self, folder_path: str):
+        """Establece una carpeta de descarga personalizada"""
+        self.custom_folder = Path(folder_path)
+        self.downloads_folder = self.custom_folder
+    
+    def reset_to_default_folder(self):
+        """Restablece la carpeta de descarga a la por defecto (Downgram)"""
+        self.custom_folder = None
+        self.downloads_folder = self.base_downloads_folder / "Downgram"
         
     def ensure_downloads_folder(self):
         """Asegura que la carpeta de descargas exista"""
-        self.downloads_folder.mkdir(exist_ok=True)
+        self.downloads_folder.mkdir(parents=True, exist_ok=True)
         console.print(f"📁 Carpeta de descargas: {self.downloads_folder.absolute()}")
     
     def sanitize_filename(self, filename: str) -> str:
@@ -38,12 +50,9 @@ class VideoDownloader:
         
         return filename
     
-    def create_channel_folder(self, channel_name: str) -> Path:
-        """Crea una carpeta para el canal si no existe"""
-        safe_channel_name = self.sanitize_filename(channel_name)
-        channel_folder = self.downloads_folder / safe_channel_name
-        channel_folder.mkdir(exist_ok=True)
-        return channel_folder
+    def get_download_folder(self) -> Path:
+        """Retorna la carpeta de descarga actual (Downgram o personalizada)"""
+        return self.downloads_folder
     
     async def download_media(self, telegram_manager, media_files: List[Dict[str, Any]], selected_indices: List[int]) -> Dict[str, int]:
         """Descarga los archivos de media seleccionados con barra de progreso"""
@@ -74,12 +83,11 @@ class VideoDownloader:
             # Crear tareas para cada archivo de media
             for i, media in enumerate(selected_media):
                 # Crear nombre de archivo
-                channel_name = media['channel_title']
                 filename = self._generate_filename(media)
                 
-                # Crear carpeta del canal
-                channel_folder = self.create_channel_folder(channel_name)
-                file_path = channel_folder / filename
+                # Usar carpeta de descarga (Downgram o personalizada)
+                download_folder = self.get_download_folder()
+                file_path = download_folder / filename
                 
                 # Verificar si el archivo ya existe
                 if file_path.exists():
@@ -288,17 +296,16 @@ class VideoDownloader:
         if not self.downloads_folder.exists():
             return downloaded_files
         
-        for channel_folder in self.downloads_folder.iterdir():
-            if channel_folder.is_dir():
-                for media_file in channel_folder.iterdir():
-                    if media_file.is_file() and media_file.suffix.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.mp3', '.m4a', '.ogg', '.flac', '.wav']:
-                        stat = media_file.stat()
-                        downloaded_files.append({
-                            'filename': media_file.name,
-                            'channel': channel_folder.name,
-                            'size': stat.st_size,
-                            'path': str(media_file),
-                            'modified': stat.st_mtime
-                        })
+        # Buscar archivos directamente en la carpeta de descarga (sin subcarpetas por canal)
+        for media_file in self.downloads_folder.iterdir():
+            if media_file.is_file() and media_file.suffix.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.mp3', '.m4a', '.ogg', '.flac', '.wav']:
+                stat = media_file.stat()
+                downloaded_files.append({
+                    'filename': media_file.name,
+                    'channel': 'Downgram',  # No hay subcarpetas por canal
+                    'size': stat.st_size,
+                    'path': str(media_file),
+                    'modified': stat.st_mtime
+                })
         
         return downloaded_files
