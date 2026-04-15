@@ -104,7 +104,7 @@ class DowngramCLI:
         selected_entities = None
         selected_channel_names = None
         keyword = None
-        all_selected_videos = []
+        all_selected_media = []
         
         while self.is_running:
             try:
@@ -151,7 +151,7 @@ class DowngramCLI:
                     current_state = 'keyword'
                     continue
                 
-                # ========== BÚSQUEDA DE VIDEOS ==========
+                # ========== BÚSQUEDA DE MEDIA ==========
                 if current_state == 'keyword':
                     keyword, action = self.ui.get_search_keyword()
                     
@@ -160,15 +160,15 @@ class DowngramCLI:
                         current_state = 'channels'
                         continue
                     
-                    # Reiniciar lista de videos seleccionados
-                    all_selected_videos = []
+                    # Reiniciar lista de archivos seleccionados
+                    all_selected_media = []
                     current_state = 'search'
                     continue
                 
                 # ========== RESULTADOS DE BÚSQUEDA ==========
                 if current_state == 'search':
                     search_success = await self._handle_search_and_selection(
-                        selected_entities, keyword, all_selected_videos
+                        selected_entities, keyword, all_selected_media
                     )
                     
                     if search_success == 'back':
@@ -181,14 +181,14 @@ class DowngramCLI:
                         current_state = 'menu'
                         continue
                     
-                    if not all_selected_videos:
-                        # No seleccionó videos, preguntar qué hacer
+                    if not all_selected_media:
+                        # No seleccionó archivos, preguntar qué hacer
                         if not self.ui.confirm_action("¿Deseas realizar otra búsqueda?"):
                             # Volver al menú principal
                             current_state = 'menu'
                         else:
                             # Volver a la búsqueda con misma palabra clave
-                            all_selected_videos = []
+                            all_selected_media = []
                         continue
                     
                     current_state = 'download'
@@ -196,16 +196,16 @@ class DowngramCLI:
                 
                 # ========== DESCARGA ==========
                 if current_state == 'download':
-                    download_results = await self.downloader.download_videos(
+                    download_results = await self.downloader.download_media(
                         self.telegram_manager,
-                        all_selected_videos,
-                        list(range(len(all_selected_videos)))
+                        all_selected_media,
+                        list(range(len(all_selected_media)))
                     )
                     
                     # Mostrar resumen final
                     self.ui.show_completion_message(
                         download_results['downloaded'],
-                        len(all_selected_videos)
+                        len(all_selected_media)
                     )
                     
                     # Preguntar qué hacer después de descargar
@@ -222,11 +222,11 @@ class DowngramCLI:
                     if next_action == 'exit':
                         break
                     elif next_action == 'search':
-                        all_selected_videos = []
+                        all_selected_media = []
                         current_state = 'keyword'
                     else:
                         # Volver al menú principal
-                        all_selected_videos = []
+                        all_selected_media = []
                         selected_entities = None
                         selected_channel_names = None
                         keyword = None
@@ -239,13 +239,13 @@ class DowngramCLI:
                 if not self.ui.confirm_action("¿Deseas intentar nuevamente?"):
                     break
     
-    async def _handle_search_and_selection(self, selected_entities, keyword, all_selected_videos):
-        """Maneja la búsqueda y selección de videos con paginación. Retorna 'back', 'menu', o True."""
+    async def _handle_search_and_selection(self, selected_entities, keyword, all_selected_media):
+        """Maneja la búsqueda y selección de media con paginación. Retorna 'back', 'menu', o True."""
         current_page = 0
         
         while True:
             # Realizar búsqueda para la página actual
-            search_result = await self.telegram_manager.search_videos(
+            search_result = await self.telegram_manager.search_media(
                 entities=selected_entities,
                 keyword=keyword,
                 limit=self.config.max_search_results,
@@ -253,7 +253,7 @@ class DowngramCLI:
             )
             
             # Mostrar resultados y selección
-            selected_video_indices, navigation_action = self.ui.show_search_results(search_result)
+            selected_media_indices, navigation_action = self.ui.show_search_results(search_result)
             
             # Manejar opción de volver atrás
             if navigation_action == 'back':
@@ -271,15 +271,15 @@ class DowngramCLI:
                 current_page = target_page
                 continue
             
-            # Si hay videos seleccionados, agregarlos a la lista
-            if selected_video_indices:
-                page_videos = search_result['videos']
-                for idx in selected_video_indices:
-                    all_selected_videos.append(page_videos[idx])
+            # Si hay media seleccionado, agregarlo a la lista
+            if selected_media_indices:
+                page_media = search_result['media']
+                for idx in selected_media_indices:
+                    all_selected_media.append(page_media[idx])
                 
-                # Preguntar si desea seleccionar más videos de otras páginas
+                # Preguntar si desea seleccionar más media de otras páginas
                 if search_result['total_pages'] > 1:
-                    if self.ui.confirm_action("¿Deseas seleccionar videos de otras páginas?"):
+                    if self.ui.confirm_action("¿Deseas seleccionar archivos de otras páginas?"):
                         # Permitir navegar a otras páginas
                         nav_choice = Prompt.ask(
                             "📍 Navegar a: [next/prev/page N/finish/back]",
@@ -288,7 +288,7 @@ class DowngramCLI:
                         
                         if nav_choice == 'back':
                             # Volver a la búsqueda (sin guardar selección actual)
-                            all_selected_videos.clear()
+                            all_selected_media.clear()
                             return 'back'
                         elif nav_choice == 'next' and current_page < search_result['total_pages'] - 1:
                             current_page += 1

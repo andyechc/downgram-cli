@@ -144,46 +144,59 @@ class UserInterface:
     @staticmethod
     def show_search_results(search_result: Dict[str, Any]) -> tuple[List[int], bool]:
         """Muestra los resultados de búsqueda con paginación y permite selección"""
-        videos = search_result['videos']
+        media = search_result['media']
         current_page = search_result['current_page']
         total_pages = search_result['total_pages']
         total_found = search_result['total_found']
         has_more = search_result['has_more']
         
-        if not videos:
-            console.print("[yellow]⚠️  No se encontraron videos con esa palabra clave[/yellow]")
+        if not media:
+            console.print("[yellow]⚠️  No se encontraron archivos con esa palabra clave[/yellow]")
             return [], False
         
         # Crear tabla de resultados con información de paginación
-        table = Table(title=f"🎥 Resultados de Búsqueda - Página {current_page}/{total_pages} (Total: {total_found} videos)")
+        table = Table(title=f"� Resultados de Búsqueda - Página {current_page}/{total_pages} (Total: {total_found} archivos)")
         table.add_column("ID", style="cyan", width=4)
+        table.add_column("Tipo", style="green", width=6)
         table.add_column("Fecha", style="blue", width=12)
         table.add_column("Canal", style="magenta", width=15)
         table.add_column("Descripción", style="white", overflow="fold")
         table.add_column("Tamaño", style="yellow", width=10)
         
         # Agregar filas
-        for i, video in enumerate(videos, 1):
+        for i, item in enumerate(media, 1):
             # Formatear tamaño
-            size = video['file_size']
+            size = item['file_size']
             if size and isinstance(size, (int, float)) and size > 0:
                 size_text = UserInterface._format_bytes(int(size))
             else:
                 size_text = "N/A"
             
             # Formatear fecha a lenguaje humano
-            date_text = UserInterface._format_human_date(video['date'])
+            date_text = UserInterface._format_human_date(item['date'])
             
             # Mostrar descripción completa (sin truncar)
-            description = video['message'] or 'Sin descripción'
+            description = item['message'] or 'Sin descripción'
             
             # Truncar canal si es muy largo
-            channel_name = video['channel_title']
+            channel_name = item['channel_title']
             if len(channel_name) > 18:
                 channel_name = channel_name[:18] + "..."
             
+            # Determinar tipo de media
+            media_type = item.get('media_type', 'video')
+            if media_type == 'video':
+                type_icon = "🎥 Vid"
+            elif media_type == 'audio':
+                type_icon = "🎵 Aud"
+            elif media_type == 'voice':
+                type_icon = "🎤 Voz"
+            else:
+                type_icon = "📁"
+            
             table.add_row(
                 str(i),
+                type_icon,
                 date_text,
                 channel_name,
                 description,
@@ -195,14 +208,14 @@ class UserInterface:
         # Mostrar información de paginación
         console.print(f"\n[bold]📄 Información de Página[/bold]")
         console.print(f"Página actual: {current_page}/{total_pages}")
-        console.print(f"Videos en esta página: {len(videos)}")
-        console.print(f"Total de videos encontrados: {total_found}")
+        console.print(f"Archivos en esta página: {len(media)}")
+        console.print(f"Total de archivos encontrados: {total_found}")
         
-        # Selección de videos con opciones de paginación
-        console.print(f"\n[bold]📥 Selección de Videos para Descargar[/bold]")
-        console.print("[dim]Ingresa los números de los videos que deseas descargar[/dim]")
+        # Selección de media con opciones de paginación
+        console.print(f"\n[bold]📥 Selección de Archivos para Descargar[/bold]")
+        console.print("[dim]Ingresa los números de los archivos que deseas descargar[/dim]")
         console.print("[dim]Opciones especiales:[/dim]")
-        console.print("[dim]  • 'all' - descargar todos los videos de esta página[/dim]")
+        console.print("[dim]  • 'all' - descargar todos los archivos de esta página[/dim]")
         console.print("[dim]  • 'next' - ver siguiente página[/dim]")
         console.print("[dim]  • 'prev' - ver página anterior[/dim]")
         console.print("[dim]  • 'page N' - ir a página específica[/dim]")
@@ -210,7 +223,7 @@ class UserInterface:
         
         while True:
             try:
-                selection_input = Prompt.ask("🎯 Selecciona videos o navega", default="")
+                selection_input = Prompt.ask("🎯 Selecciona archivos o navega", default="")
                 
                 if not selection_input:
                     return [], False
@@ -243,13 +256,13 @@ class UserInterface:
                         console.print("[red]❌ Formato inválido. Usa: page N[/red]")
                     continue
                 elif selection_input == 'all':
-                    return list(range(len(videos))), False
+                    return list(range(len(media))), False
                 
-                # Selección normal de videos
-                selected_indices = UserInterface._parse_selection(selection_input, len(videos))
+                # Selección normal de media
+                selected_indices = UserInterface._parse_selection(selection_input, len(media))
                 
                 if selected_indices:
-                    console.print(f"[green]✅ Seleccionados {len(selected_indices)} videos para descargar[/green]")
+                    console.print(f"[green]✅ Seleccionados {len(selected_indices)} archivos para descargar[/green]")
                     return selected_indices, False
                 else:
                     console.print("[red]❌ Selección inválida. Intenta nuevamente[/red]")
